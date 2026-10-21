@@ -215,6 +215,61 @@ describe('SingleMailViewerComponent', () => {
     expect(component).toBeTruthy();
   });
 
+  describe('printing HTML mail', () => {
+    const noticeText = 'This HTML message has been sanitized for your security.';
+    let printedBlob: Blob;
+
+    beforeEach(() => {
+      spyOn(URL, 'createObjectURL').and.callFake((blob: Blob) => {
+        printedBlob = blob;
+        return 'about:blank';
+      });
+      component.messageId = 22;
+      fixture.detectChanges();
+      spyOn(component.printFrame.nativeElement.contentWindow, 'print').and.stub();
+    });
+
+    for (const sandboxSupported of [false, true]) {
+      it(`hides only the application notice when sandbox support is ${sandboxSupported}`, async () => {
+        component.SUPPORTS_IFRAME_SANDBOX = sandboxSupported;
+        component.showHTML = true;
+        component.mailContentHTML = '<p>Printable message body</p>';
+        fixture.detectChanges();
+
+        const notice: HTMLElement = fixture.nativeElement.querySelector('.notificationContainer');
+        expect(notice.textContent).toContain(noticeText);
+        expect(notice.style.display).not.toBe('none');
+
+        // Email content may itself contain the same words and class; it must still print.
+        const emailContent = `<p id="email-body" class="notificationContainer">${noticeText}</p>`;
+        if (sandboxSupported) {
+          component.htmliframe = { nativeElement: { contentWindow: { document: {
+            documentElement: { innerHTML: `<body>${emailContent}</body>` }, body: { scrollHeight: 0 }
+          } } } };
+        } else {
+          notice.nextElementSibling.innerHTML = emailContent;
+        }
+
+        component.print();
+        const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
+        const printedNotice: HTMLElement = printDocument.querySelector('.notificationContainer:not(#email-body)');
+        expect(printedNotice.style.display).toBe('none');
+        expect(printDocument.querySelector('#email-body').textContent).toBe(noticeText);
+        expect((printDocument.querySelector('#email-body') as HTMLElement).style.display).not.toBe('none');
+        expect(notice.style.display).not.toBe('none');
+        expect(notice.textContent).toContain(noticeText);
+      });
+    }
+
+    it('prints plain-text mail when no sanitization notice exists', async () => {
+      expect(fixture.nativeElement.querySelector('.notificationContainer')).toBeNull();
+      component.messageContents.nativeElement.insertAdjacentHTML('beforeend', '<p id="plain-body">Plain message</p>');
+      component.print();
+      const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
+      expect(printDocument.querySelector('#plain-body').textContent).toBe('Plain message');
+    });
+  });
+
   it('show mail', fakeAsync(() => {
       expect(component).toBeTruthy();
 
