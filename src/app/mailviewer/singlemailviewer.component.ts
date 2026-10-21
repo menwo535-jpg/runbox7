@@ -89,6 +89,7 @@ export class SingleMailViewerComponent implements OnInit, DoCheck, AfterViewInit
   @ViewChild('printFrame') printFrame: ElementRef;
   @ViewChild('messageContents') messageContents: ElementRef;
   @ViewChild('htmliframe') htmliframe: ElementRef;
+  @ViewChild('htmlSanitizationNotice') htmlSanitizationNotice: ElementRef<HTMLElement>;
   @ViewChild('htmlToggleButton') htmlToggleButton: MatButtonToggle;
   @ViewChild('replyMessageHeader', {read: ElementRef}) replyHeaderHTML: ElementRef;
   @ViewChildren('replyMessageHeader', {read: ElementRef}) replyHeaderHTMLQuery: QueryList<ElementRef>;
@@ -706,7 +707,20 @@ export class SingleMailViewerComponent implements OnInit, DoCheck, AfterViewInit
       contactButtons[i].style.display = 'none';
     }
 
-    let printablecontent = this.messageContents.nativeElement.innerHTML;
+    // Keep the application notice on screen, but omit it from the printed layout.
+    const notice = this.htmlSanitizationNotice?.nativeElement;
+    const noticeDisplay = notice?.style.display;
+    let printablecontent: string;
+    try {
+      if (notice) {
+        notice.style.display = 'none';
+      }
+      printablecontent = this.messageContents.nativeElement.innerHTML;
+    } finally {
+      if (notice) {
+        notice.style.display = noticeDisplay;
+      }
+    }
     if (this.htmliframe) {
       printablecontent = printablecontent.replace(/\<iframe[^]*\<\/iframe\>/g,
         this.htmliframe.nativeElement.contentWindow.document.documentElement.innerHTML
