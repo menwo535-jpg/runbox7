@@ -229,7 +229,6 @@ describe('SingleMailViewerComponent', () => {
       component.messageId = 22;
       component.mailObj.attachments = [];
       fixture.detectChanges();
-      component.printFrame = { nativeElement: { src: '', onload: null } };
     });
 
     for (const sandboxSupported of [false, true]) {
@@ -253,6 +252,7 @@ describe('SingleMailViewerComponent', () => {
           notice.nextElementSibling.innerHTML = emailContent;
         }
 
+        component.printFrame = { nativeElement: { src: '', onload: null } };
         component.print();
         const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
         const printedNotice: HTMLElement = printDocument.querySelector('.notificationContainer:not(#email-body)');
@@ -267,6 +267,7 @@ describe('SingleMailViewerComponent', () => {
     it('prints plain-text mail when no sanitization notice exists', async () => {
       expect(fixture.nativeElement.querySelector('.notificationContainer')).toBeNull();
       component.messageContents.nativeElement.insertAdjacentHTML('beforeend', '<p id="plain-body">Plain message</p>');
+      component.printFrame = { nativeElement: { src: '', onload: null } };
       component.print();
       const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
       expect(printDocument.querySelector('#plain-body').textContent).toBe('Plain message');
