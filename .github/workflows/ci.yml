@@ -1,4 +1,4 @@
-name: Verify print notice regression
+name: Verify print E2E on Ubuntu 22.04
 
 on:
   push:
@@ -10,9 +10,9 @@ permissions:
 jobs:
   regression:
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     env:
-      NODE_OPTIONS: --max-old-space-size=4096
+      NODE_OPTIONS: --max-old-space-size=2048
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -20,5 +20,5 @@ jobs:
           node-version: 16.20.2
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - name: Run regression against unchanged production code
-        run: npm run test -- --watch=false --progress=false --browsers=FirefoxHeadless --include=src/app/mailviewer/singlemailviewer.component.spec.ts
+      - name: Run unchanged end-to-end suite with the print fix
+        run: npm run ci-tests -- e2e
