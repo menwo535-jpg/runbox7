@@ -28,6 +28,7 @@ import { MatLegacyDialogModule as MatDialogModule } from '@angular/material/lega
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatGridListModule } from '@angular/material/grid-list';
+import { MatLegacyListModule as MatListModule } from '@angular/material/legacy-list';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { MatLegacyMenuModule as MatMenuModule } from '@angular/material/legacy-menu';
@@ -106,6 +107,7 @@ describe('SingleMailViewerComponent', () => {
         MatIconModule,
         MatIconTestingModule,
         MatGridListModule,
+        MatListModule,
         MatToolbarModule,
         MatTooltipModule,
         MatDividerModule,
@@ -225,8 +227,9 @@ describe('SingleMailViewerComponent', () => {
         return 'about:blank';
       });
       component.messageId = 22;
+      component.mailObj.attachments = [];
       fixture.detectChanges();
-      spyOn(component.printFrame.nativeElement.contentWindow, 'print').and.stub();
+      component.printFrame = { nativeElement: { src: '', onload: null } };
     });
 
     for (const sandboxSupported of [false, true]) {
