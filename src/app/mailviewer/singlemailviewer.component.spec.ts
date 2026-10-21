@@ -28,6 +28,7 @@ import { MatLegacyDialogModule as MatDialogModule } from '@angular/material/lega
 import { MatDividerModule } from '@angular/material/divider';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatGridListModule } from '@angular/material/grid-list';
+import { MatLegacyListModule as MatListModule } from '@angular/material/legacy-list';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatIconTestingModule } from '@angular/material/icon/testing';
 import { MatLegacyMenuModule as MatMenuModule } from '@angular/material/legacy-menu';
@@ -106,6 +107,7 @@ describe('SingleMailViewerComponent', () => {
         MatIconModule,
         MatIconTestingModule,
         MatGridListModule,
+        MatListModule,
         MatToolbarModule,
         MatTooltipModule,
         MatDividerModule,
@@ -213,6 +215,67 @@ describe('SingleMailViewerComponent', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  describe('printing HTML mail', () => {
+    const noticeText = 'This HTML message has been sanitized for your security.';
+    let printedBlob: Blob;
+
+    beforeEach(() => {
+      spyOn(URL, 'createObjectURL').and.callFake((blob: Blob) => {
+        printedBlob = blob;
+        return 'about:blank';
+      });
+      component.messageId = 22;
+      component.mailObj.attachments = [];
+      fixture.detectChanges();
+    });
+
+    for (const sandboxSupported of [false, true]) {
+      it(`hides only the application notice when sandbox support is ${sandboxSupported}`, async () => {
+        component.SUPPORTS_IFRAME_SANDBOX = sandboxSupported;
+        component.showHTML = true;
+        component.mailContentHTML = '<p>Printable message body</p>';
+        fixture.detectChanges();
+
+        const notice: HTMLElement = fixture.nativeElement.querySelector('.notificationContainer');
+        expect(notice.textContent).toContain(noticeText);
+        expect(notice.style.display).not.toBe('none');
+        const noticeParent = notice.parentNode;
+        const nextNoticeSibling = notice.nextSibling;
+
+        // Email content may itself contain the same words and class; it must still print.
+        const emailContent = `<p id="email-body" class="notificationContainer">${noticeText}</p>`;
+        if (sandboxSupported) {
+          component.htmliframe = { nativeElement: { contentWindow: { document: {
+            documentElement: { innerHTML: `<body>${emailContent}</body>` }, body: { scrollHeight: 0 }
+          } } } };
+        } else {
+          notice.nextElementSibling.innerHTML = emailContent;
+        }
+
+        component.printFrame = { nativeElement: { src: '', onload: null } };
+        component.print();
+        const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
+        const printedNotice: HTMLElement = printDocument.querySelector('.notificationContainer:not(#email-body)');
+        expect(printedNotice).toBeNull();
+        expect(printDocument.querySelector('#email-body').textContent).toBe(noticeText);
+        expect((printDocument.querySelector('#email-body') as HTMLElement).style.display).not.toBe('none');
+        expect(notice.style.display).not.toBe('none');
+        expect(notice.textContent).toContain(noticeText);
+        expect(notice.parentNode).toBe(noticeParent);
+        expect(notice.nextSibling).toBe(nextNoticeSibling);
+      });
+    }
+
+    it('prints plain-text mail when no sanitization notice exists', async () => {
+      expect(fixture.nativeElement.querySelector('.notificationContainer')).toBeNull();
+      component.messageContents.nativeElement.insertAdjacentHTML('beforeend', '<p id="plain-body">Plain message</p>');
+      component.printFrame = { nativeElement: { src: '', onload: null } };
+      component.print();
+      const printDocument = new DOMParser().parseFromString(await printedBlob.text(), 'text/html');
+      expect(printDocument.querySelector('#plain-body').textContent).toBe('Plain message');
+    });
   });
 
   it('show mail', fakeAsync(() => {
