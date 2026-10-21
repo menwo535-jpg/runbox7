@@ -1,22 +1,24 @@
-name: Runbox7 CI
+name: Verify print notice regression
 
 on:
-    [push, pull_request]
+  push:
+    branches: [verify/print-notice-2014]
+
+permissions:
+  contents: read
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        env:
-            NODE_OPTIONS: "--max-old-space-size=2048"
-        strategy:
-            matrix:
-                phase: ['lint', 'policy', 'unit', 'e2e', 'build']
-        name: Run ${{ matrix.phase }} tests
-        steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
-              with:
-                  node-version: '16.x'
-                  cache: 'npm'
-            - run: npm ci
-            - run: npm run ci-tests -- ${{ matrix.phase }}
+  regression:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 16.20.2
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Run regression against unchanged production code
+        run: npm run test -- --watch=false --progress=false --browsers=FirefoxHeadless --include=src/app/mailviewer/singlemailviewer.component.spec.ts
